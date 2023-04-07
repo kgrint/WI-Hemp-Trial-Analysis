@@ -1,0 +1,144 @@
+---
+title: "Hemp_Yield"
+author: "Kolby Grint"
+date: "2023-04-03"
+output: pdf_document
+---
+
+
+```{r}
+library(car)
+library(ggplot2)
+library(tidyverse)
+library(dplyr)
+library(emmeans)
+library(glmmTMB)
+library(multcomp)
+library(multcompView)
+library(lmerTest)
+library(lme4)
+library(dplyr)
+```
+
+```{r}
+data1 = read.csv(file = "Hemp_RData.csv")
+```
+
+```{r}
+data1.1 = data1 %>%
+  filter(Experiment == 1)
+```
+
+# Variety Field Experiment Results
+
+## Stems/acre by variety
+```{r}
+stem_data = data1.1 %>%
+  filter(!is.na(Stems.Acre)) %>%
+  mutate(Stems.Acre = as.numeric(Stems.Acre))
+```
+
+```{r}
+Buff_stems = lmer(Stems.Acre ~ Variety + (1|Rep), data = (filter(stem_data, Location == "Buffalo")))
+Buff_stem_aov = anova(Buff_stems) #significant
+
+chip_stems = lmer(Stems.Acre ~ Variety + (1|Rep), data = (filter(stem_data, Location == "Chippewa")))
+chip_stem_aov = anova(chip_stems) #significant
+
+Whir_stems = lmer(Stems.Acre ~ Variety + (1|Rep), data = (filter(stem_data, Location == "Whirling Thunder")))
+Whir_stem_aov = anova(Whir_stems) #significant
+```
+
+```{r}
+Buff_stem_means = emmeans(Buff_stems, ~ Variety, contr= "pairwise", adjust= "tukey")
+Buff_stem_CLD = cld(Buff_stem_means$emmean, alpha=0.05, Letters=letters, sort=TRUE, reverse=TRUE)
+
+chip_stem_means = emmeans(chip_stems, ~ Variety, contr= "pairwise", adjust= "tukey")
+chip_stem_CLD = cld(chip_stem_means$emmean, alpha=0.05, Letters=letters, sort=TRUE, reverse=TRUE)
+
+Whir_stem_means = emmeans(Whir_stems, ~ Variety, contr= "pairwise", adjust= "tukey")
+Whir_stem_CLD = cld(Whir_stem_means$emmean, alpha=0.05, Letters=letters, sort=TRUE, reverse=TRUE)
+```
+
+```{r}
+Buff_stem_CLD = as_tibble(Buff_stem_CLD) %>%
+  rename(Stand = emmean) %>%
+  mutate(Location = "Buffalo County")
+
+chip_stem_CLD = as_tibble(chip_stem_CLD) %>%
+  rename(Stand = emmean) %>%
+  mutate(Location = "Chippewa County")
+
+Whir_stem_CLD = as_tibble(Whir_stem_CLD) %>%
+  rename(Stand = emmean) %>%
+  mutate(Location = "Whirling Thunder")
+
+Stand_Results = rbind(Buff_stem_CLD, chip_stem_CLD, Whir_stem_CLD)
+```
+
+```{r, fig.height = 15, fig.width = 15}
+Stand_figure = 
+  Stand_Results %>%
+  ggplot(aes(x= Variety, y= Stand)) +
+  geom_point(aes(), size = 5) +
+  geom_text(aes(label = .group), nudge_y =  400000, size = 10) +
+  facet_grid(cols = vars(Location)) +
+  labs(title = "Hemp Stand", x = "Variety", y = "Hemp Stand") +
+  scale_y_continuous(limits = c(0,2500000), breaks = c(0,500000,1000000,1500000,2000000)) +
+  theme(legend.position = "none",
+        axis.title.x = element_text(size = 50),
+        axis.title.y = element_text(size = 50),
+        axis.text.y = element_text(size = 30),
+        axis.text.x = element_text(size = 30, angle = 45, hjust = 1),
+        strip.text.x = element_text(size = 30),
+        strip.text.y = element_text(size = 30),
+        title = element_text(size = 50)) +
+  coord_flip()
+
+Stand_figure
+```
+
+
+## Tons DM by variety
+```{r}
+DM_data = data1.1 %>%
+  filter(!is.na(Tons.DM.acre))
+```
+
+```{r}
+Buff_DM = lmer(Tons.DM.acre ~ Variety + (1|Rep), data = (filter(DM_data, Location == "Buffalo")))
+Buff_DM_aov = anova(Buff_DM) #significant
+
+chip_DM = lmer(Tons.DM.acre ~ Variety + (1|Rep), data = (filter(DM_data, Location == "Chippewa")))
+chip_DM_aov = anova(chip_DM) #significant
+
+Whir_DM = lmer(Tons.DM.acre ~ Variety + (1|Rep), data = (filter(DM_data, Location == "Whirling Thunder")))
+Whir_DM_aov = anova(Whir_DM) #not significant?
+```
+
+```{r}
+Buff_stem_means = emmeans(Buff_stems, ~ Variety, contr= "pairwise", adjust= "tukey")
+Buff_stem_CLD = cld(Buff_stem_means$emmean, alpha=0.05, Letters=letters, sort=TRUE, reverse=TRUE)
+
+chip_stem_means = emmeans(chip_stems, ~ Variety, contr= "pairwise", adjust= "tukey")
+chip_stem_CLD = cld(chip_stem_means$emmean, alpha=0.05, Letters=letters, sort=TRUE, reverse=TRUE)
+
+Whir_stem_means = emmeans(Whir_stems, ~ Variety, contr= "pairwise", adjust= "tukey")
+Whir_stem_CLD = cld(Whir_stem_means$emmean, alpha=0.05, Letters=letters, sort=TRUE, reverse=TRUE)
+```
+
+```{r}
+Buff_stem_CLD = as_tibble(Buff_stem_CLD) %>%
+  rename(Stand = emmean) %>%
+  mutate(Location = "Buffalo County")
+
+chip_stem_CLD = as_tibble(chip_stem_CLD) %>%
+  rename(Stand = emmean) %>%
+  mutate(Location = "Chippewa County")
+
+Whir_stem_CLD = as_tibble(Whir_stem_CLD) %>%
+  rename(Stand = emmean) %>%
+  mutate(Location = "Whirling Thunder")
+
+Stand_Results = rbind(Buff_stem_CLD, chip_stem_CLD, Whir_stem_CLD)
+```
