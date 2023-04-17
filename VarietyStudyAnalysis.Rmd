@@ -40,10 +40,19 @@ stem_data = data1.1 %>%
 ```
 
 ```{r}
-Buff_stems = lmer(Stems.Acre ~ Variety + (1|Rep), data = (filter(stem_data, Location == "Buffalo")))
+library(ggpubr)
+ggqqplot(filter(stem_data, Location == "Buffalo County"), "Stems.Acre")
+
+ggqqplot(filter(stem_data, Location == "Chippewa County"), "Stems.Acre")
+
+ggqqplot(filter(stem_data, Location == "Whirling Thunder"), "Stems.Acre")
+```
+
+```{r}
+Buff_stems = lmer(Stems.Acre ~ Variety + (1|Rep), data = (filter(stem_data, Location == "Buffalo County")))
 Buff_stem_aov = anova(Buff_stems) #significant
 
-chip_stems = lmer(Stems.Acre ~ Variety + (1|Rep), data = (filter(stem_data, Location == "Chippewa")))
+chip_stems = lmer(Stems.Acre ~ Variety + (1|Rep), data = (filter(stem_data, Location == "Chippewa County")))
 chip_stem_aov = anova(chip_stems) #significant
 
 Whir_stems = lmer(Stems.Acre ~ Variety + (1|Rep), data = (filter(stem_data, Location == "Whirling Thunder")))
@@ -63,15 +72,15 @@ Whir_stem_CLD = cld(Whir_stem_means$emmean, alpha=0.05, Letters=letters, sort=TR
 
 ```{r}
 Buff_stem_CLD = as_tibble(Buff_stem_CLD) %>%
-  rename(Stand = emmean) %>%
+  rename(Stems.Acre = emmean) %>%
   mutate(Location = "Buffalo County")
 
 chip_stem_CLD = as_tibble(chip_stem_CLD) %>%
-  rename(Stand = emmean) %>%
+  rename(Stems.Acre = emmean) %>%
   mutate(Location = "Chippewa County")
 
 Whir_stem_CLD = as_tibble(Whir_stem_CLD) %>%
-  rename(Stand = emmean) %>%
+  rename(Stems.Acre = emmean) %>%
   mutate(Location = "Whirling Thunder")
 
 Stand_Results = rbind(Buff_stem_CLD, chip_stem_CLD, Whir_stem_CLD)
@@ -91,19 +100,21 @@ write_xlsx(Stand_Results, "Stand Count Means Separation Results.xlsx")
 ```
 
 ```{r, fig.height = 15, fig.width = 15}
-nudge1 = c(500000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000,400000)
+nudge1 = c(500000,500000,500000,500000,500000,500000,500000,500000.500000,500000,500000,500000,500000,500000,500000,500000,500000,600000,400000,800000,800000,850000,1000000,900000,950000,950000,800000,700000,650000,650000,500000,550000,400000,400000,500000,500000,500000,500000,500000,500000,500000,500000,500000,500000,500000,600000,500000,500000)
 
 Stand_figure = 
   Stand_Results %>%
-  ggplot(aes(x= Variety, y= Stand)) +
+  ggplot(aes(x= Variety, y= Stems.Acre)) +
+  geom_point(data = stem_data, mapping = aes(y= Stems.Acre), alpha = 0.2, size = 5, color = "red") +
   geom_point(aes(), size = 5) +
   geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), width = .3, size = 1) +
   geom_text(aes(label = .group), nudge_y = nudge1
             , size = 10) +
   facet_grid(cols = vars(Location)) +
-  labs(title = "Hemp Stand", x = "Variety", y = "Hemp Stand") +
-  scale_y_continuous(limits = c(-200000,2500000), breaks = c(0,500000,1000000,1500000,2000000)) +
-  theme(legend.position = "none",
+  labs(title = "Hemp Stand", x = "Variety", y = bquote('Stand'~(plants~acre^-1))) +
+  scale_y_continuous(limits = c(-200000,3000000), breaks = c(0,500000,1000000,1500000,2000000)) +
+  theme(panel.background = element_rect(fill = 'gray80'),
+        legend.position = "none",
         axis.title.x = element_text(size = 50),
         axis.title.y = element_text(size = 50),
         axis.text.y = element_text(size = 30),
@@ -116,6 +127,10 @@ Stand_figure =
 Stand_figure
 ```
 
+```{r}
+ggsave("Stand_Results_Figure.jpeg", plot = Stand_figure, height = 15, width = 15, dpi = 300)
+```
+
 
 ## Tons DM by variety
 ```{r}
@@ -124,10 +139,10 @@ DM_data = data1.1 %>%
 ```
 
 ```{r}
-Buff_DM = lmer(Tons.DM.acre ~ Variety + (1|Rep), data = (filter(DM_data, Location == "Buffalo")))
+Buff_DM = lmer(Tons.DM.acre ~ Variety + (1|Rep), data = (filter(DM_data, Location == "Buffalo County")))
 Buff_DM_aov = anova(Buff_DM) #significant
 
-chip_DM = lmer(Tons.DM.acre ~ Variety + (1|Rep), data = (filter(DM_data, Location == "Chippewa")))
+chip_DM = lmer(Tons.DM.acre ~ Variety + (1|Rep), data = (filter(DM_data, Location == "Chippewa County")))
 chip_DM_aov = anova(chip_DM) #significant
 
 Whir_DM = lmer(Tons.DM.acre ~ Variety + (1|Rep), data = (filter(DM_data, Location == "Whirling Thunder")))
@@ -147,15 +162,15 @@ Whir_DM_CLD = cld(Whir_DM_means$emmean, alpha=0.05, Letters=letters, sort=TRUE, 
 
 ```{r}
 Buff_DM_CLD = as_tibble(Buff_DM_CLD) %>%
-  rename(DM = emmean) %>%
+  rename(Tons.DM.acre = emmean) %>%
   mutate(Location = "Buffalo County")
 
 chip_DM_CLD = as_tibble(chip_DM_CLD) %>%
-  rename(DM = emmean) %>%
+  rename(Tons.DM.acre = emmean) %>%
   mutate(Location = "Chippewa County")
 
 Whir_DM_CLD = as_tibble(Whir_DM_CLD) %>%
-  rename(DM = emmean) %>%
+  rename(Tons.DM.acre = emmean) %>%
   mutate(Location = "Whirling Thunder")
 
 DM_Results = rbind(Buff_DM_CLD, chip_DM_CLD, Whir_DM_CLD)
@@ -176,16 +191,20 @@ write_xlsx(DM_Results, "Dry Matter Means Separation Results.xlsx")
 
 
 ```{r, fig.height = 15, fig.width = 15}
+nudge2 = c(4,4,5,5,5,5,5,5,5,5,5,5,5,5,5,4,4,0,5,5,5,6,6,5,6,6,6,6,5,5,4,4,4,3,2,2,3,3,3,3,3,3,3,3,3,3,4,3)
+
 DM_figure = 
   DM_Results %>%
-  ggplot(aes(x= Variety, y= DM)) +
+  ggplot(aes(x= Variety, y= Tons.DM.acre)) +
+  geom_point(data = DM_data, mapping = aes(y= Tons.DM.acre), alpha = 0.2, size = 5, color = "red") +
   geom_point(aes(), size = 5) +
   geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), width = .3, size = 1) +
-  geom_text(aes(label = .group), nudge_y = 6.5, size = 10) +
+  geom_text(aes(label = .group), nudge_y = nudge2, size = 10) +
   facet_grid(cols = vars(Location)) +
-  labs(title = "Hemp Dry Matter", x = "Variety", y = "Dry Matter") +
-  #scale_y_continuous(limits = c(0,2500000), breaks = c(0,500000,1000000,1500000,2000000)) +
-  theme(legend.position = "none",
+  labs(title = "Hemp Dry Matter", x = "Variety", y = bquote('Dry Matter'~(tons~acre^-1))) +
+  scale_y_continuous(limits = c(-1,15), breaks = c(0,5,10,15)) +
+  theme(panel.background = element_rect(fill = 'gray80'),
+        legend.position = "none",
         axis.title.x = element_text(size = 50),
         axis.title.y = element_text(size = 50),
         axis.text.y = element_text(size = 30),
@@ -198,3 +217,6 @@ DM_figure =
 DM_figure
 ```
 
+```{r}
+ggsave("Hemp_DryMatter_Figure.jpeg", plot = DM_figure, height = 15, width = 15, dpi = 300)
+```
