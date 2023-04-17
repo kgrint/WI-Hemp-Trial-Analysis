@@ -1,0 +1,178 @@
+---
+title: "Seeding Rate Study Analysis"
+author: "Kolby Grint"
+date: "2023-04-10"
+output: pdf_document
+---
+
+```{r}
+library(car)
+library(ggplot2)
+library(tidyverse)
+library(dplyr)
+library(emmeans)
+library(glmmTMB)
+library(multcomp)
+library(multcompView)
+library(lmerTest)
+library(lme4)
+library(dplyr)
+library(writexl)
+```
+
+```{r}
+data1 = read.csv(file = "Hemp_RData.csv")
+```
+
+```{r}
+data1.1 = data1 %>%
+  filter(Experiment == 2) %>%
+  filter(!is.na(Tons.DM.acre),
+         !is.na(Stems.Acre)) %>%
+  mutate(lbs_acre = recode(Variety,
+                           "Tibor50" = "50000",
+                           "Tibor60" = "60000",
+                           "Tibor70" = "70000",
+                           "Tibor80" = "80000",
+                           "Felina50" = "50000",
+                           "Felina60" = "60000",
+                           "Felina70" = "70000",
+                           "Felina80" = "80000"),
+         Variety = fct_recode(Variety,
+                              "Tibor" = "Tibor50",
+                              "Tibor" = "Tibor60",
+                              "Tibor" = "Tibor70",
+                              "Tibor" = "Tibor80",
+                              "Felina" = "Felina50",
+                              "Felina" = "Felina60",
+                              "Felina" = "Felina70",
+                              "Felina" = "Felina80"))
+```
+
+# Stems
+```{r}
+stem_data = data1.1 %>%
+  filter(!is.na(Stems.Acre)) %>%
+  mutate(Stems.Acre = as.numeric(Stems.Acre))
+```
+
+```{r}
+library(ggpubr)
+ggqqplot(filter(stem_data, Location == "Buffalo County"), "Stems.Acre")
+
+ggqqplot(filter(stem_data, Location == "Chippewa County"), "Stems.Acre")
+
+ggqqplot(filter(stem_data, Location == "Whirling Thunder"), "Stems.Acre")
+```
+
+```{r}
+stem_mod = lmer(Stems.Acre ~ Location*Variety*lbs_acre + (1|Rep/Location), data = stem_data)
+
+anova(stem_mod)
+```
+
+```{r}
+Buff_stems = lmer(Stems.Acre ~ Variety*lbs_acre + (1|Rep), data = (filter(stem_data, Location == "Buffalo County")))
+Buff_stem_aov = anova(Buff_stems) #Variety significant
+
+chip_stems = lmer(Stems.Acre ~ Variety*lbs_acre + (1|Rep), data = (filter(stem_data, Location == "Chippewa County")))
+chip_stem_aov = anova(chip_stems) #seeding rate significant
+
+Whir_stems = lmer(Stems.Acre ~ Variety*lbs_acre + (1|Rep), data = (filter(stem_data, Location == "Whirling Thunder")))
+Whir_stem_aov = anova(Whir_stems) #variety almost significant
+```
+
+```{r}
+Buff_stem_means = emmeans(Buff_stems, ~ lbs_acre|Variety, contr= "pairwise")
+Buff_stem_CLD = cld(Buff_stem_means$emmean, alpha=0.05, Letters=letters, sort=TRUE, reverse=TRUE, adjust = "none")
+
+chip_stem_means = emmeans(chip_stems, ~ lbs_acre|Variety, contr= "pairwise")
+chip_stem_CLD = cld(chip_stem_means$emmean, alpha=0.05, Letters=letters, sort=TRUE, reverse=TRUE, adjust = "none")
+
+Whir_stem_means = emmeans(Whir_stems, ~ lbs_acre|Variety, contr= "pairwise")
+Whir_stem_CLD = cld(Whir_stem_means$emmean, alpha=0.05, Letters=letters, sort=TRUE, reverse=TRUE,adjust = "none")
+```
+
+```{r}
+Buff_stem_CLD = as_tibble(Buff_stem_CLD) %>%
+  rename(Stems.Acre = emmean) %>%
+  mutate(Location = "Buffalo County")
+
+chip_stem_CLD = as_tibble(chip_stem_CLD) %>%
+  rename(Stems.Acre = emmean) %>%
+  mutate(Location = "Chippewa County")
+
+Whir_stem_CLD = as_tibble(Whir_stem_CLD) %>%
+  rename(Stems.Acre = emmean) %>%
+  mutate(Location = "Whirling Thunder")
+
+Stand_Results = rbind(Buff_stem_CLD, chip_stem_CLD, Whir_stem_CLD)
+```
+
+```{r}
+Buff_stem_aov = as_tibble(Buff_stem_aov) %>%
+  mutate(Location = "Buffalo County")
+chip_stem_aov = as_tibble(chip_stem_aov) %>%
+  mutate(Location = "Chippewa County") 
+Whir_stem_aov = as_tibble(Whir_stem_aov) %>%
+  mutate(Location = "Whirling Thunder")
+
+Stand_ANOVA = rbind(Buff_stem_aov, chip_stem_aov, Whir_stem_aov)
+write_xlsx(Stand_ANOVA, "Seeding Rate Stand Count Anova Results.xlsx")
+write_xlsx(Stand_Results, "Seeding Rate Stand Count Means Separation Results.xlsx")
+```
+
+```{r, fig.height = 15, fig.width = 15}
+nudge1 = c(1000000,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)
+
+Stand_figure = 
+  Stand_Results %>%
+  ggplot(aes(x= lbs_acre, y= Stems.Acre)) +
+  geom_point(data = stem_data, mapping = aes(y= Stems.Acre), alpha = 0.2, size = 5, color = "red") +
+  geom_point(aes(), size = 5) +
+  geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), width = .3, size = 1) +
+  geom_text(aes(label = .group), nudge_y = nudge1, size = 10) +
+  facet_grid(cols = vars(Location), rows = vars(Variety)) +
+  labs(title = "Hemp Stand", x = "Seeding Rate", y = bquote('Stand'~(plants~acre^-1))) +
+  scale_y_continuous(limits = c(-200000,3000000), breaks = c(0,500000,1000000,1500000,2000000,2500000)) +
+  theme(panel.background = element_rect(fill = 'gray80'),
+        legend.position = "none",
+        axis.title.x = element_text(size = 50),
+        axis.title.y = element_text(size = 50),
+        axis.text.y = element_text(size = 30),
+        axis.text.x = element_text(size = 30, angle = 45, hjust = 1),
+        strip.text.x = element_text(size = 30),
+        strip.text.y = element_text(size = 30),
+        title = element_text(size = 50)) #+
+  #coord_flip()
+
+Stand_figure
+```
+
+
+# Tons DM by Seeding Rate
+```{r}
+DM_data = data1.1 %>%
+  filter(!is.na(Tons.DM.acre))
+```
+
+```{r}
+library(ggpubr)
+ggqqplot(filter(DM_data, Location == "Buffalo"), "Tons.DM.acre")
+```
+
+```{r}
+Buff_DM = lmer(Tons.DM.acre ~ Variety*lbs_acre + (1|Rep), data = (filter(DM_data, Location == "Buffalo")))
+Buff_DM_aov = anova(Buff_DM) #nothing significant
+
+chip_DM = lmer(Tons.DM.acre ~ Variety*lbs_acre + (1|Rep), data = (filter(DM_data, Location == "Chippewa")))
+chip_DM_aov = anova(chip_DM) #nothing significant
+
+Whir_DM = lmer(Tons.DM.acre ~ Variety*lbs_acre + (1|Rep), data = (filter(DM_data, Location == "Whirling Thunder")))
+Whir_DM_aov = anova(Whir_DM) #nothing significant?
+```
+
+```{r}
+
+```
+
