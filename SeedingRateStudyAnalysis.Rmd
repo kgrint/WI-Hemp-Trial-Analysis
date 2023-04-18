@@ -123,7 +123,7 @@ write_xlsx(Stand_Results, "Seeding Rate Stand Count Means Separation Results.xls
 ```
 
 ```{r, fig.height = 15, fig.width = 15}
-nudge1 = c(1000000,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1)
+nudge1 = c(500000,500000,500000,500000,500000,500000,500000,500000,800000,800000,800000,800000,850000,800000,800000,800000,500000,500000,500000,500000,500000,500000,500000,500000)
 
 Stand_figure = 
   Stand_Results %>%
@@ -133,7 +133,7 @@ Stand_figure =
   geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), width = .3, size = 1) +
   geom_text(aes(label = .group), nudge_y = nudge1, size = 10) +
   facet_grid(cols = vars(Location), rows = vars(Variety)) +
-  labs(title = "Hemp Stand", x = "Seeding Rate", y = bquote('Stand'~(plants~acre^-1))) +
+  labs(title = "Hemp Stand", x = bquote('Seeding Rate'~(seeds~acre^-1)), y = bquote('Stand'~(plants~acre^-1))) +
   scale_y_continuous(limits = c(-200000,3000000), breaks = c(0,500000,1000000,1500000,2000000,2500000)) +
   theme(panel.background = element_rect(fill = 'gray80'),
         legend.position = "none",
@@ -149,6 +149,9 @@ Stand_figure =
 Stand_figure
 ```
 
+```{r}
+ggsave("SeedingRate_Stand_Results_Figure.jpeg", plot = Stand_figure, height = 15, width = 15, dpi = 300)
+```
 
 # Tons DM by Seeding Rate
 ```{r}
@@ -162,10 +165,10 @@ ggqqplot(filter(DM_data, Location == "Buffalo"), "Tons.DM.acre")
 ```
 
 ```{r}
-Buff_DM = lmer(Tons.DM.acre ~ Variety*lbs_acre + (1|Rep), data = (filter(DM_data, Location == "Buffalo")))
+Buff_DM = lmer(Tons.DM.acre ~ Variety*lbs_acre + (1|Rep), data = (filter(DM_data, Location == "Buffalo County")))
 Buff_DM_aov = anova(Buff_DM) #nothing significant
 
-chip_DM = lmer(Tons.DM.acre ~ Variety*lbs_acre + (1|Rep), data = (filter(DM_data, Location == "Chippewa")))
+chip_DM = lmer(Tons.DM.acre ~ Variety*lbs_acre + (1|Rep), data = (filter(DM_data, Location == "Chippewa County")))
 chip_DM_aov = anova(chip_DM) #nothing significant
 
 Whir_DM = lmer(Tons.DM.acre ~ Variety*lbs_acre + (1|Rep), data = (filter(DM_data, Location == "Whirling Thunder")))
@@ -173,6 +176,72 @@ Whir_DM_aov = anova(Whir_DM) #nothing significant?
 ```
 
 ```{r}
+Buff_DM_means = emmeans(Buff_DM, ~ lbs_acre|Variety, contr= "pairwise")
+Buff_DM_CLD = cld(Buff_DM_means$emmean, alpha=0.05, Letters=letters, sort=TRUE, reverse=TRUE, adjust= "none")
 
+chip_DM_means = emmeans(chip_DM, ~ lbs_acre|Variety, contr= "pairwise")
+chip_DM_CLD = cld(chip_DM_means$emmean, alpha=0.05, Letters=letters, sort=TRUE, reverse=TRUE, adjust= "none")
+
+Whir_DM_means = emmeans(Whir_DM, ~ lbs_acre|Variety, contr= "pairwise")
+Whir_DM_CLD = cld(Whir_DM_means$emmean, alpha=0.05, Letters=letters, sort=TRUE, reverse=TRUE, adjust= "none")
 ```
 
+```{r}
+Buff_DM_CLD = as_tibble(Buff_DM_CLD) %>%
+  rename(Tons.DM.acre = emmean) %>%
+  mutate(Location = "Buffalo County")
+
+chip_DM_CLD = as_tibble(chip_DM_CLD) %>%
+  rename(Tons.DM.acre = emmean) %>%
+  mutate(Location = "Chippewa County")
+
+Whir_DM_CLD = as_tibble(Whir_DM_CLD) %>%
+  rename(Tons.DM.acre = emmean) %>%
+  mutate(Location = "Whirling Thunder")
+
+DM_Results = rbind(Buff_DM_CLD, chip_DM_CLD, Whir_DM_CLD)
+```
+
+```{r}
+Buff_DM_aov = as_tibble(Buff_DM_aov) %>%
+  mutate(Location = "Buffalo County")
+chip_DM_aov = as_tibble(chip_DM_aov) %>%
+  mutate(Location = "Chippewa County") 
+Whir_DM_aov = as_tibble(Whir_DM_aov) %>%
+  mutate(Location = "Whirling Thunder")
+
+DM_ANOVA = rbind(Buff_DM_aov, chip_DM_aov, Whir_DM_aov)
+write_xlsx(DM_ANOVA, "Seeding Rate Dry Matter Anova Results.xlsx")
+write_xlsx(DM_Results, "Seeding Rate Dry Matter Means Separation Results.xlsx")
+```
+
+```{r, fig.height = 15, fig.width = 15}
+nudge1 = c(3,3,3,3,3,3,3,3,3,3,3,3,3,4,3,4,3,3,3,3,3,3,3,3)
+
+DM_figure = 
+  DM_Results %>%
+  ggplot(aes(x= lbs_acre, y= Tons.DM.acre)) +
+  geom_point(data = DM_data, mapping = aes(y= Tons.DM.acre), alpha = 0.2, size = 5, color = "red") +
+  geom_point(aes(), size = 5) +
+  geom_errorbar(aes(ymin = lower.CL, ymax = upper.CL), width = .3, size = 1) +
+  geom_text(aes(label = .group), nudge_y = nudge1, size = 10) +
+  facet_grid(cols = vars(Location), rows = vars(Variety)) +
+  labs(title = "Hemp Dry Matter", x = bquote('Dry Matter'~(tons~acre^-1)), y = bquote('Stand'~(plants~acre^-1))) +
+  scale_y_continuous(limits = c(-2,15), breaks = c(0,5,10,15)) +
+  theme(panel.background = element_rect(fill = 'gray80'),
+        legend.position = "none",
+        axis.title.x = element_text(size = 50),
+        axis.title.y = element_text(size = 50),
+        axis.text.y = element_text(size = 30),
+        axis.text.x = element_text(size = 30, angle = 45, hjust = 1),
+        strip.text.x = element_text(size = 30),
+        strip.text.y = element_text(size = 30),
+        title = element_text(size = 50)) #+
+  #coord_flip()
+
+DM_figure
+```
+
+```{r}
+ggsave("SeedingRate_DryMatter_Results_Figure.jpeg", plot = DM_figure, height = 15, width = 15, dpi = 300)
+```
